@@ -1,8 +1,14 @@
 package main
 
-import "github.com/op/go-logging"
+import (
+	"fmt"
+	"github.com/op/go-logging"
+	"net"
+	"os"
+	"time"
+)
 import "github.com/urfave/cli/v2"
-import "os"
+import "github.com/tatsushid/go-fastping"
 
 var log = logging.MustGetLogger("uptimestats")
 var format = logging.MustStringFormatter(
@@ -43,6 +49,20 @@ func main() {
 						appLogsLeveled.SetLevel(logging.DEBUG, "")
 					}
 					log.Debug("addr: ", c.String("addr"))
+
+					ping := fastping.NewPinger()
+					_ = ping.AddIP(c.String("addr"))
+					ping.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
+						fmt.Printf("[%v] ▶ IP Addr: %s receive, RTT: %v\n", time.Now().Format(time.RFC3339), addr.String(), rtt)
+					}
+					ping.OnIdle = func() {
+						log.Debug("finish")
+					}
+					err := ping.Run()
+					if err != nil {
+						log.Error(err)
+					}
+
 					return nil
 				},
 			},
